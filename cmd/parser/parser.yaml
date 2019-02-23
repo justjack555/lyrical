@@ -1,2 +1,3 @@
-parsers: 3
-lyrics_directory: 'resources/sample.txt'
+song_workers: 3
+file_workers: 3
+lyrics_directory: 'resources/'

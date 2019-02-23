@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"lyrical/pkg/parser"
+	"github.com/justjack555/lyrical/pkg/parser"
 )
 
 func main(){
