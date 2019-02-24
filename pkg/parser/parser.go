@@ -67,6 +67,92 @@ func configParser() (*Master, error) {
 	return m, nil
 }
 
+/**
+	Process a regular file (a song)
+ */
+func (m *Master) processFile(fInfo os.FileInfo) error {
+	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
+	return nil
+}
+
+/**
+	Helper method that determines if a file is a directory
+	or a regular file.
+
+	If a regular file, it calls the regular
+	file specific processor to parse the song.
+
+	If the file is a directory, the method invokes itself
+	on each of the child files
+
+	All errors are returned to the caller for handling
+ */
+func (m *Master) processFileInfo(fInfo os.FileInfo) error {
+	if !fInfo.IsDir() {
+		return m.processFile(fInfo)
+	}
+
+	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
+
+	f, err := os.Open(fInfo.Name())
+	if err != nil {
+		return err
+	}
+	defer func(f *os.File) {
+		if err := f.Close(); err != nil {
+			log.Fatal("ProcessFileInfo(): Unable to close file: ", f.Name())
+		}
+	}(f)
+
+	children, err := f.Readdir(0)
+	if err != nil {
+		return err
+	}
+
+	err = f.Chdir()
+	if err != nil {
+		return err
+	}
+
+	log.Println("ProcessFileInfo(): Number of children for parent: ", f.Name(), " is ", len(children))
+
+
+	for _, child := range children {
+		log.Println("ProcessFileInfo(): Processing child file: ", child.Name(), " in parent directory: ", fInfo.Name())
+		err = m.processFileInfo(child)
+		if err != nil {
+			log.Println("ProcessFileInfo(): Unable to process file with name: ",
+				child.Name(), " in parent dir: ", f.Name())
+			return err
+		}
+	}
+
+	return nil
+}
+
+/**
+	Driver method to kick off file processing
+	Stats the lyrics directory, assures that
+	there is no error in doing so, and initiates
+	the processing of each file in the directory
+	tree
+ */
+func (m *Master) ProcessFiles() error {
+	fInfo, err := os.Stat(m.Lyrics_directory)
+	if err != nil {
+		return err
+	}
+
+	err = m.processFileInfo(fInfo)
+	if err != nil {
+		return err
+	}
+
+	log.Println("ProcessFiles(): No error in driver...")
+
+	return nil
+}
+
 func Start() error {
 
 	m, err := configParser()
@@ -74,7 +160,12 @@ func Start() error {
 		return err
 	}
 
-	log.Println("ConfigParser(): The configured master is: ", *m)
+//	log.Println("ConfigParser(): The configured master is: ", *m)
+
+	err = m.ProcessFiles()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
