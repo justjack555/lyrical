@@ -29,16 +29,12 @@ func (sw *songWorker) mapWords(sc *bufio.Scanner) error {
 	return nil
 }
 
-func (sw *songWorker) processSong(fInfo os.FileInfo) error {
-	f, err := os.Open(fInfo.Name())
-	if err != nil {
-		return err
-	}
+func (sw *songWorker) processSong(f *os.File) error {
 
 	sc := bufio.NewScanner(f)
 	sc.Split(bufio.ScanWords)
 
-	err = sw.mapWords(sc)
+	err := sw.mapWords(sc)
 	if err != nil {
 		return err
 	}

@@ -70,16 +70,16 @@ func configParser() (*Master, error) {
 /**
 	Process a regular file (a song)
  */
-func (m *Master) processFile(fInfo os.FileInfo) error {
+func (m *Master) processFile(f *os.File) error {
 //	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
 	sw := newSongWorker()
-	err := sw.processSong(fInfo)
+	err := sw.processSong(f)
 	if err != nil {
 		return err
 	}
 
 	// DEBUG
-	log.Println("Master.ProcessFile(): Song words for song: ", fInfo.Name(),
+	log.Println("Master.ProcessFile(): Song words for song: ", f.Name(),
 		":")
 	for k, v := range sw.songWords {
 		log.Println("(Word, indices): (", k, ", ", v, ")")
@@ -101,37 +101,38 @@ func (m *Master) processFile(fInfo os.FileInfo) error {
 	All errors are returned to the caller for handling
  */
 func (m *Master) processFileInfo(fInfo os.FileInfo) error {
-	if !fInfo.IsDir() {
-		return m.processFile(fInfo)
-	}
-
-//	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
-
 	f, err := os.Open(fInfo.Name())
 	if err != nil {
+		log.Println("Master.ProcessFileInfo(): Unable to open file: ", fInfo.Name())
 		return err
 	}
+
 	defer func(f *os.File) {
 		if err := f.Close(); err != nil {
 			log.Fatal("ProcessFileInfo(): Unable to close file: ", f.Name())
 		}
 	}(f)
 
-	children, err := f.Readdir(0)
-	if err != nil {
-		return err
+	if !fInfo.IsDir() {
+		return m.processFile(f)
 	}
 
-	err = f.Chdir()
+//	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
+
+	children, err := f.Readdir(0)
 	if err != nil {
 		return err
 	}
 
 //	log.Println("ProcessFileInfo(): Number of children for parent: ", f.Name(), " is ", len(children))
 
-
 	for _, child := range children {
 //		log.Println("ProcessFileInfo(): Processing child file: ", child.Name(), " in parent directory: ", fInfo.Name())
+		err = f.Chdir()
+		if err != nil {
+			return err
+		}
+
 		err = m.processFileInfo(child)
 		if err != nil {
 			log.Println("ProcessFileInfo(): Unable to process file with name: ",

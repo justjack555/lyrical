@@ -21,3 +21,12 @@ the fast lookup speeds on a massive set of songs.
 * Run the song parser: 
 
     `go run cmd/parser/parser.go cmd/parser/parser.yaml`
+    
+## Enhancements
+### Parser
+#### File Loading
+* During song lyrics file traversing, we change directory
+to the parent prior to each call of processFileInfo on a
+child file. This should be improved by either goroutine
+usage to create a new process stack or by improved
+usage of the Chdir function
