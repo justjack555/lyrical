@@ -10,12 +10,12 @@ import (
 	Representation of a word
 	in a song.
 
-	We note the song and the position
+	We note the song and the sorted position(s)
 	of the word in the song
  */
 type SongWord struct {
 	song *common.Song
-	index int
+	indices []int
 }
 
 /**
@@ -71,7 +71,20 @@ func configParser() (*Master, error) {
 	Process a regular file (a song)
  */
 func (m *Master) processFile(fInfo os.FileInfo) error {
-	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
+//	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
+	sw := newSongWorker()
+	err := sw.processSong(fInfo)
+	if err != nil {
+		return err
+	}
+
+	// DEBUG
+	log.Println("Master.ProcessFile(): Song words for song: ", fInfo.Name(),
+		":")
+	for k, v := range sw.songWords {
+		log.Println("(Word, indices): (", k, ", ", v, ")")
+	}
+
 	return nil
 }
 
@@ -92,7 +105,7 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 		return m.processFile(fInfo)
 	}
 
-	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
+//	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
 
 	f, err := os.Open(fInfo.Name())
 	if err != nil {
@@ -114,11 +127,11 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 		return err
 	}
 
-	log.Println("ProcessFileInfo(): Number of children for parent: ", f.Name(), " is ", len(children))
+//	log.Println("ProcessFileInfo(): Number of children for parent: ", f.Name(), " is ", len(children))
 
 
 	for _, child := range children {
-		log.Println("ProcessFileInfo(): Processing child file: ", child.Name(), " in parent directory: ", fInfo.Name())
+//		log.Println("ProcessFileInfo(): Processing child file: ", child.Name(), " in parent directory: ", fInfo.Name())
 		err = m.processFileInfo(child)
 		if err != nil {
 			log.Println("ProcessFileInfo(): Unable to process file with name: ",
@@ -148,8 +161,6 @@ func (m *Master) ProcessFiles() error {
 		return err
 	}
 
-	log.Println("ProcessFiles(): No error in driver...")
-
 	return nil
 }
 
@@ -159,8 +170,6 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-
-//	log.Println("ConfigParser(): The configured master is: ", *m)
 
 	err = m.ProcessFiles()
 	if err != nil {
