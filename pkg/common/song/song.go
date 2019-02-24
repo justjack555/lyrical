@@ -1,4 +1,4 @@
-package common
+package song
 
 import "sync"
 

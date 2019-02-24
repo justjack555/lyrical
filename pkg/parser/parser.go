@@ -6,18 +6,6 @@ import (
 	"os"
 )
 
-/*
-	Representation of a word
-	in a song.
-
-	We note the song and the sorted position(s)
-	of the word in the song
- */
-type SongWord struct {
-	song *common.Song
-	indices []int
-}
-
 /**
 	Master coordinates the parsing
 	of a set of song into an inverted
@@ -27,7 +15,7 @@ type Master struct {
 	Song_workers int
 	File_workers int
 	Lyrics_directory string
-	invIndex map[string][]*SongWord
+	invIndex map[string][]*songWord
 }
 
 type ArgsError struct {
@@ -44,7 +32,7 @@ func (ae *ArgsError) Error() string {
  */
 func newMaster() *Master{
 	m := new(Master)
-	m.invIndex = make(map[string][]*SongWord)
+	m.invIndex = make(map[string][]*songWord)
 
 	return m
 }
@@ -72,17 +60,18 @@ func configParser() (*Master, error) {
  */
 func (m *Master) processFile(f *os.File) error {
 //	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
-	sw := newSongWorker()
+	sw := newSongWorker(f.Name())
 	err := sw.processSong(f)
 	if err != nil {
 		return err
 	}
 
 	// DEBUG
-	log.Println("Master.ProcessFile(): Song words for song: ", f.Name(),
-		":")
+//	log.Println("Master.ProcessFile(): Song words for song: ", f.Name(),
+//		":")
 	for k, v := range sw.songWords {
-		log.Println("(Word, indices): (", k, ", ", v, ")")
+//		log.Println("(Word, indices): (", k, ", ", v, ")")
+		m.invIndex[k] = append(m.invIndex[k], v)
 	}
 
 	return nil
