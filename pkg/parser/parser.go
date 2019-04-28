@@ -78,6 +78,15 @@ func (m *Master) processFile(f *os.File) error {
 }
 
 /**
+	Close song lyrics file and check for error
+ */
+func closeFile(f *os.File) {
+	if err := f.Close(); err != nil {
+		log.Fatal("ProcessFileInfo(): Unable to close file: ", f.Name())
+	}
+}
+
+/**
 	Helper method that determines if a file is a directory
 	or a regular file.
 
@@ -96,11 +105,7 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 		return err
 	}
 
-	defer func(f *os.File) {
-		if err := f.Close(); err != nil {
-			log.Fatal("ProcessFileInfo(): Unable to close file: ", f.Name())
-		}
-	}(f)
+	defer closeFile(f)
 
 	if !fInfo.IsDir() {
 		return m.processFile(f)
@@ -140,7 +145,7 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 	the processing of each file in the directory
 	tree
  */
-func (m *Master) ProcessFiles() error {
+func (m *Master) ProcessFiles(workerChan chan *os.File, done chan bool) error {
 	fInfo, err := os.Stat(m.Lyrics_directory)
 	if err != nil {
 		return err
@@ -149,6 +154,14 @@ func (m *Master) ProcessFiles() error {
 	err = m.processFileInfo(fInfo)
 	if err != nil {
 		return err
+	}
+
+	log.Println("ProcessFiles(): About to close worker chan: ")
+	close(workerChan)
+	log.Println("ProcessFiles(): Closed worker chan: ")
+	for i := 0; i < m.File_workers; i++ {
+		log.Println("ProcessFiles(): Waiting for ", i, "th done ack")
+		<- done
 	}
 
 	return nil
@@ -161,7 +174,9 @@ func Start() error {
 		return err
 	}
 
-	err = m.ProcessFiles()
+	workerChan, done := m.startWorkerPool(m.processFile)
+
+	err = m.ProcessFiles(workerChan, done)
 	if err != nil {
 		return err
 	}
