@@ -30,6 +30,10 @@ func newSongWorker(name string) *songWorker {
 	return sw
 }
 
+/**
+	Either create or update the representation of a
+	word's appearance in a particular song
+ */
 func (sw *songWorker) mapWord(lyric string, i int) {
 	res := sw.songWords[lyric]
 	if res == nil {
@@ -41,6 +45,10 @@ func (sw *songWorker) mapWord(lyric string, i int) {
 	sw.songWords[lyric] = res
 }
 
+/**
+	Obtain the index position of a word and its text, and add that to
+	the representation of the document
+ */
 func (sw *songWorker) mapWords(sc *bufio.Scanner) error {
 	for i := 0; sc.Scan(); i++ {
 		lyric := sc.Text()
@@ -54,6 +62,10 @@ func (sw *songWorker) mapWords(sc *bufio.Scanner) error {
 	return nil
 }
 
+/**
+	Setup buffered scanner to parse words from song's lyric file,
+	then invoke the word mapper
+ */
 func (sw *songWorker) processSong(f *os.File) error {
 
 	sc := bufio.NewScanner(f)
@@ -65,4 +77,21 @@ func (sw *songWorker) processSong(f *os.File) error {
 	}
 
 	return nil
+}
+
+/**
+	Process a regular file (a song) by initializing a new song worker,
+	having it process the song's lyric file, and returning th eresult
+ */
+func processFile(f *os.File) (*songWorker, error) {
+	//	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
+	defer closeFile(f)
+
+	sw := newSongWorker(f.Name())
+	err := sw.processSong(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return sw, nil
 }

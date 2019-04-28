@@ -56,28 +56,6 @@ func configParser() (*Master, error) {
 }
 
 /**
-	Process a regular file (a song)
- */
-func (m *Master) processFile(f *os.File) error {
-//	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
-	sw := newSongWorker(f.Name())
-	err := sw.processSong(f)
-	if err != nil {
-		return err
-	}
-
-	// DEBUG
-//	log.Println("Master.ProcessFile(): Song words for song: ", f.Name(),
-//		":")
-	for k, v := range sw.songWords {
-//		log.Println("(Word, indices): (", k, ", ", v, ")")
-		m.invIndex[k] = append(m.invIndex[k], v)
-	}
-
-	return nil
-}
-
-/**
 	Close song lyrics file and check for error
  */
 func closeFile(f *os.File) {
@@ -98,36 +76,32 @@ func closeFile(f *os.File) {
 
 	All errors are returned to the caller for handling
  */
-func (m *Master) processFileInfo(fInfo os.FileInfo) error {
+func (m *Master) processFileInfo(fInfo os.FileInfo, reqChan chan *os.File) error {
 	f, err := os.Open(fInfo.Name())
 	if err != nil {
 		log.Println("Master.ProcessFileInfo(): Unable to open file: ", fInfo.Name())
 		return err
 	}
 
-	defer closeFile(f)
-
 	if !fInfo.IsDir() {
-		return m.processFile(f)
+		reqChan <- f
+		return nil
 	}
 
-//	log.Println("ProcessFileInfo(): File: ", fInfo.Name(), " is a directory...")
+	defer closeFile(f)
 
 	children, err := f.Readdir(0)
 	if err != nil {
 		return err
 	}
 
-//	log.Println("ProcessFileInfo(): Number of children for parent: ", f.Name(), " is ", len(children))
-
 	for _, child := range children {
-//		log.Println("ProcessFileInfo(): Processing child file: ", child.Name(), " in parent directory: ", fInfo.Name())
 		err = f.Chdir()
 		if err != nil {
 			return err
 		}
 
-		err = m.processFileInfo(child)
+		err = m.processFileInfo(child, reqChan)
 		if err != nil {
 			log.Println("ProcessFileInfo(): Unable to process file with name: ",
 				child.Name(), " in parent dir: ", f.Name())
@@ -136,6 +110,28 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 	}
 
 	return nil
+}
+
+/**
+	Add the results from a new song to the master
+	inverted index
+ */
+func (m *Master) processResponse(sw *songWorker) {
+	for k, v := range sw.songWords {
+		m.invIndex[k] = append(m.invIndex[k], v)
+	}
+}
+
+/**
+	Process each of the workers' responses and send acknowledgment
+	once all responses have been processed
+ */
+func (m *Master) processResponses(chans *WorkerChannels) {
+	for sw := range chans.respChan {
+		m.processResponse(sw)
+	}
+
+	chans.doneChan <- true
 }
 
 /**
@@ -151,22 +147,31 @@ func (m *Master) ProcessFiles(chans *WorkerChannels) error {
 		return err
 	}
 
-	err = m.processFileInfo(fInfo)
+	go m.processResponses(chans)
+
+
+	err = m.processFileInfo(fInfo, chans.reqChan)
 	if err != nil {
 		return err
 	}
 
-	log.Println("ProcessFiles(): About to close worker chan: ")
 	close(chans.reqChan)
-	log.Println("ProcessFiles(): Closed worker chan: ")
+
 	for i := 0; i < m.File_workers; i++ {
-		log.Println("ProcessFiles(): Waiting for ", i, "th done ack")
 		<- chans.doneChan
 	}
+
+	close(chans.respChan)
+	<- chans.doneChan
 
 	return nil
 }
 
+/**
+	Initialize the pool of worker goroutines
+	and launch the processFiles process using
+	the worker pool
+ */
 func Start() error {
 
 	m, err := configParser()
@@ -174,12 +179,14 @@ func Start() error {
 		return err
 	}
 
-	chans := m.startWorkerPool(m.processFile)
+	chans := m.startWorkerPool(processFile)
 
 	err = m.ProcessFiles(chans)
 	if err != nil {
 		return err
 	}
+
+	log.Println("Start(): INFO: Number of words inserted into inverted index: ", len(m.invIndex))
 
 	return nil
 }
