@@ -133,30 +133,6 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 	return nil
 }
 
-func defineWorker(f func (interface{}), ch chan interface{}, doneChan chan bool) {
-
-}
-
-func (m *Master) generateWorkers(workerFunc func (interface{}), workerExit func()) chan interface{} {
-	ch := make(chan interface{})
-	doneChan := make(chan bool)
-
-	for i := 0; i < m.File_workers; i++ {
-		log.Println("GenerateWorkers(): File worker: ", i)
-		defineWorker(workerFunc, ch, doneChan)
-	}
-
-	go func(){
-		for	i := 0; i < m.File_workers; i++ {
-			<- doneChan
-		}
-
-		workerExit()
-	}()
-
-	return ch
-}
-
 /**
 	Driver method to kick off file processing
 	Stats the lyrics directory, assures that
@@ -169,8 +145,6 @@ func (m *Master) ProcessFiles() error {
 	if err != nil {
 		return err
 	}
-
-	workers := m.generateWorkers()
 
 	err = m.processFileInfo(fInfo)
 	if err != nil {
