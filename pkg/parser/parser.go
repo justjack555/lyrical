@@ -145,7 +145,7 @@ func (m *Master) processFileInfo(fInfo os.FileInfo) error {
 	the processing of each file in the directory
 	tree
  */
-func (m *Master) ProcessFiles(workerChan chan *os.File, done chan bool) error {
+func (m *Master) ProcessFiles(chans *WorkerChannels) error {
 	fInfo, err := os.Stat(m.Lyrics_directory)
 	if err != nil {
 		return err
@@ -157,11 +157,11 @@ func (m *Master) ProcessFiles(workerChan chan *os.File, done chan bool) error {
 	}
 
 	log.Println("ProcessFiles(): About to close worker chan: ")
-	close(workerChan)
+	close(chans.reqChan)
 	log.Println("ProcessFiles(): Closed worker chan: ")
 	for i := 0; i < m.File_workers; i++ {
 		log.Println("ProcessFiles(): Waiting for ", i, "th done ack")
-		<- done
+		<- chans.doneChan
 	}
 
 	return nil
@@ -174,9 +174,9 @@ func Start() error {
 		return err
 	}
 
-	workerChan, done := m.startWorkerPool(m.processFile)
+	chans := m.startWorkerPool(m.processFile)
 
-	err = m.ProcessFiles(workerChan, done)
+	err = m.ProcessFiles(chans)
 	if err != nil {
 		return err
 	}

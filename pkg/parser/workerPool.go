@@ -8,27 +8,40 @@ import (
 
 type fileHandler func (file *os.File) error
 
-func startWorker(w chan *os.File, done chan bool, handler fileHandler, i int) {
+type WorkerChannels struct {
+	reqChan chan *os.File
+	respChan chan *songWorker
+	doneChan chan bool
+}
+
+func startWorker(chans *WorkerChannels, handler fileHandler, i int) {
 	logTag := fmt.Sprintf("startWorker%d():", i)
 	log.Println(logTag)
 
-	for v := range w {
+	for v := range chans.reqChan {
 		log.Println(logTag, " Received val: ", v)
 		if err := handler(v); err != nil {
 			log.Println(logTag, "ERR: ", err)
 		}
 	}
 
-	done <- true
+	chans.doneChan <- true
 }
 
-func (m *Master) startWorkerPool(handler fileHandler) (chan *os.File, chan bool) {
-	w := make(chan *os.File)
-	done := make(chan bool)
+func createWorkerChans() * WorkerChannels {
+	return &WorkerChannels{
+		reqChan: make(chan *os.File),
+		respChan : make(chan *songWorker),
+		doneChan : make(chan bool),
+	}
+}
+
+func (m *Master) startWorkerPool(handler fileHandler) *WorkerChannels {
+	chans := createWorkerChans()
 
 	for i := 0; i < m.File_workers; i++ {
-		go startWorker(w, done, handler, i)
+		go startWorker(chans, handler, i)
 	}
 
-	return w, done
+	return chans
 }
