@@ -8,7 +8,7 @@ import (
 
 /**
 	Master coordinates the parsing
-	of a set of song into an inverted
+	of a set of Song into an inverted
 	index
  */
 type Master struct {
@@ -56,7 +56,7 @@ func configParser() (*Master, error) {
 }
 
 /**
-	Close song lyrics file and check for error
+	Close Song lyrics file and check for error
  */
 func closeFile(f *os.File) {
 	if err := f.Close(); err != nil {
@@ -69,7 +69,7 @@ func closeFile(f *os.File) {
 	or a regular file.
 
 	If a regular file, it calls the regular
-	file specific processor to parse the song.
+	file specific processor to parse the Song.
 
 	If the file is a directory, the method invokes itself
 	on each of the child files
@@ -113,7 +113,7 @@ func (m *Master) processFileInfo(fInfo os.FileInfo, reqChan chan *os.File) error
 }
 
 /**
-	Add the results from a new song to the master
+	Add the results from a new Song to the master
 	inverted index
  */
 func (m *Master) processResponse(sw *songWorker) {
@@ -172,21 +172,21 @@ func (m *Master) ProcessFiles(chans *WorkerChannels) error {
 	and launch the processFiles process using
 	the worker pool
  */
-func Start() error {
+func Start() (*Master, error) {
 
 	m, err := configParser()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	chans := m.startWorkerPool(processFile)
 
 	err = m.ProcessFiles(chans)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Println("Start(): INFO: Number of words inserted into inverted index: ", len(m.invIndex))
 
-	return nil
+	return m, nil
 }

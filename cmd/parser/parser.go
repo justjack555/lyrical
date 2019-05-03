@@ -8,8 +8,15 @@ import (
 func main(){
 	log.Println("Initializing parser...")
 
-	err := parser.Start()
+	m, err := parser.Start()
 	if err != nil {
 		log.Fatalln("Parser terminating with error: ", err)
+		return
+	}
+
+	err = m.StoreIndex()
+	if err != nil {
+		log.Fatalln("Parser terminating with error: ", err)
+		return
 	}
 }

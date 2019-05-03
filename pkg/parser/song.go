@@ -8,14 +8,14 @@ import (
 
 /*
 	Representation of a word
-	in a song.
+	in a Song.
 
-	We note the song and the sorted position(s)
-	of the word in the song
+	We note the Song and the sorted position(s)
+	of the word in the Song
  */
 type songWord struct {
-	song *song.Song
-	indices []int
+	Song    *song.Song
+	Indices []int
 }
 
 type songWorker struct {
@@ -32,16 +32,16 @@ func newSongWorker(name string) *songWorker {
 
 /**
 	Either create or update the representation of a
-	word's appearance in a particular song
+	word's appearance in a particular Song
  */
 func (sw *songWorker) mapWord(lyric string, i int) {
 	res := sw.songWords[lyric]
 	if res == nil {
 		res = new(songWord)
-		res.song = sw.song
+		res.Song = sw.song
 	}
 
-	res.indices = append(res.indices, i)
+	res.Indices = append(res.Indices, i)
 	sw.songWords[lyric] = res
 }
 
@@ -63,7 +63,7 @@ func (sw *songWorker) mapWords(sc *bufio.Scanner) error {
 }
 
 /**
-	Setup buffered scanner to parse words from song's lyric file,
+	Setup buffered scanner to parse words from Song's lyric file,
 	then invoke the word mapper
  */
 func (sw *songWorker) processSong(f *os.File) error {
@@ -80,8 +80,8 @@ func (sw *songWorker) processSong(f *os.File) error {
 }
 
 /**
-	Process a regular file (a song) by initializing a new song worker,
-	having it process the song's lyric file, and returning th eresult
+	Process a regular file (a Song) by initializing a new Song worker,
+	having it process the Song's lyric file, and returning th eresult
  */
 func processFile(f *os.File) (*songWorker, error) {
 	//	log.Println("ProcessFile(): Reached regular file: ", fInfo.Name())
